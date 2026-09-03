@@ -29,14 +29,22 @@ def _database_url() -> str:
 
 DATABASE_URL = _database_url()
 
-# Neon requires SSL; local SQLite does not
+# Neon requires SSL; local SQLite does not.
+# pool_pre_ping discards dead pooled connections (Neon's pooler drops idle
+# ones aggressively); pool_recycle keeps connections from going stale mid-flight.
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
     engine_kwargs = {"connect_args": connect_args}
 else:
     import ssl
     ssl_ctx = ssl.create_default_context()
-    engine_kwargs = {"connect_args": {"ssl": ssl_ctx}, "pool_pre_ping": True}
+    engine_kwargs = {
+        "connect_args": {"ssl": ssl_ctx},
+        "pool_pre_ping": True,
+        "pool_recycle": 120,   # Neon pooler kills idle conns fast — recycle early
+        "pool_size": 5,
+        "max_overflow": 5,
+    }
 
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
