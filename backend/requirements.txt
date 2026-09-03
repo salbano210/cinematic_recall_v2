@@ -4,3 +4,10 @@ httpx
 python-dotenv
 rapidfuzz
 python-multipart
+sqlalchemy[asyncio]>=2.0
+asyncpg
+aiosqlite
+passlib[bcrypt]
+bcrypt<4.1
+pyjwt
+email-validator
