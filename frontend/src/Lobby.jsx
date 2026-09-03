@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from './api';
 
 function toggleWith(setter, id) {
@@ -18,16 +18,27 @@ export default function Lobby({ user, onOpenMatch, onLogout }) {
   const [inviteCode, setInviteCode] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [createdInvite, setCreatedInvite] = useState(null);
+  const [loaded, setLoaded] = useState(false);
 
   const load = async () => {
     try {
       const [ms, c] = await Promise.all([api('/matches'), api('/auth/crew')]);
       setMatches(ms);
       setCrew(c);
+      setError(null);
+      setLoaded(true);
     } catch (err) {
       setError(err.message);
     }
   };
+
+  // Retry a failed load once after a short delay (backend may be cold-starting)
+  useEffect(() => {
+    if (!loaded && error) {
+      const t = setTimeout(() => load(), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [error, loaded]);
 
   useState(() => { load(); });
 
@@ -72,7 +83,12 @@ export default function Lobby({ user, onOpenMatch, onLogout }) {
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error">
+          {error}
+          <button className="link-btn" style={{ marginLeft: 10 }} onClick={load}>Retry</button>
+        </div>
+      )}
 
       {createdInvite && (
         <div className="card invite-card">
