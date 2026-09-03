@@ -257,6 +257,7 @@ async def get_match_state(match_id: str, user: User = Depends(get_current_user),
 
     # Public board claims: rank -> who named it + movie info
     named = state.named_ranks or {}
+    actor_name = (await get_cached_actor_details(match.actor_id))["name"]
     user_map = {}
     if players:
         ids = [p.user_id for p in players]
@@ -294,6 +295,7 @@ async def get_match_state(match_id: str, user: User = Depends(get_current_user),
             "match_date": match.match_date,
             "created_by": match.created_by,
         },
+        "actor_name": actor_name,
         "total_movies": len(board),
         "players": players_out,
         "current_turn": current,
