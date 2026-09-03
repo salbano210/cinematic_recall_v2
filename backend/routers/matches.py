@@ -196,16 +196,14 @@ async def create_match(data: CreateMatchIn, user: User = Depends(get_current_use
     from services.game_board import get_daily_actor_id
     actor_id = await get_daily_actor_id()
 
-    # Resolve crew: creator + listed user ids (must be existing users)
+    # Resolve crew: creator + listed user ids (must be existing users).
+    # A solo match is allowed — friends join later via the invite link.
     member_ids = [user.id]
     for uid in dict.fromkeys(data.crew_user_ids):  # dedupe, keep order
         if uid != user.id:
             result = await db.execute(select(User).where(User.id == uid))
             if result.scalar_one_or_none():
                 member_ids.append(uid)
-
-    if len(member_ids) < 2:
-        raise HTTPException(status_code=400, detail="A match needs at least one opponent")
 
     match = Match(
         actor_id=actor_id,

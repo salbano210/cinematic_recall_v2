@@ -122,28 +122,33 @@ export default function Lobby({ user, onOpenMatch, onLogout }) {
         <h3 className="section-title">Start a new match</h3>
         {!showCreate ? (
           <>
-            <p className="hint-text">Today's actor, your crew, last one standing wins.</p>
+            <p className="hint-text">Today's actor. Friends join anytime via your invite link.</p>
             <button className="btn btn-primary" onClick={() => { setShowCreate(true); load(); }}>＋ New match</button>
           </>
         ) : (
           <>
-            {crew.length === 0 && (
+            {crew.length === 0 ? (
               <p className="hint-text">
-                No crew yet — after creating, share the invite link. Friends who join are in your crew forever.
+                Your crew is empty — start the match and share the invite link.
+                Anyone who joins is in your crew for every future game.
               </p>
+            ) : (
+              <>
+                <p className="hint-text">Select opponents (or start solo — friends can join via the invite link):</p>
+                {crew.map((c) => (
+                  <label key={c.id} className="crew-row">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(c.id)}
+                      onChange={() => toggleCrew(c.id)}
+                    />
+                    {c.display_name}
+                  </label>
+                ))}
+              </>
             )}
-            {crew.map((c) => (
-              <label key={c.id} className="crew-row">
-                <input
-                  type="checkbox"
-                  checked={selected.has(c.id)}
-                  onChange={() => toggleCrew(c.id)}
-                />
-                {c.display_name}
-              </label>
-            ))}
             <button className="btn btn-success" onClick={createMatch} disabled={creating}>
-              {creating ? 'Creating…' : `Start match with ${selected.size + 1} players`}
+              {creating ? 'Creating…' : 'Start match'}
             </button>
           </>
         )}
