@@ -119,6 +119,14 @@ export default function MatchView({ matchId, onBack }) {
         <p className="label">Today's actor:</p>
         <p className="actor-name">{st.actor_name}</p>
         <p className="count">{st.total_movies} movies · {st.match.match_date}</p>
+        <p className="hint-text">
+          Invite friends:{' '}
+          <code className="invite-inline">{window.location.origin}/?invite={st.invite_token}</code>
+          <button className="link-btn" style={{ marginLeft: 8 }}
+                  onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/?invite=${st.invite_token}`)}>
+            Copy
+          </button>
+        </p>
       </div>
 
       <div className="card scoreboard">
