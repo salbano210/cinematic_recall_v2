@@ -305,7 +305,10 @@ body {
 
 /* Auth */
 .auth-card { max-width: 420px; margin: 0 auto; }
-.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form {
+  display: flex; flex-direction: column; gap: 12px; align-items: stretch;
+}
+.auth-form .input { width: 100%; }
 .auth-switch { margin-top: 16px; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
 .auth-note { color: rgba(255,255,255,0.45); }
 .link-btn {
