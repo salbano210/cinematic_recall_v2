@@ -19,7 +19,7 @@ EASTERN = ZoneInfo("America/New_York")
 
 _raw_override = os.getenv("ACTOR_OVERRIDE", "").strip()
 if not _raw_override:
-    ACTOR_OVERRIDE = None
+    ACTOR_OVERRIDE = 19292  # Adam Sandler — launch actor; set env var or remove to rotate
 else:
     try:
         ACTOR_OVERRIDE = int(_raw_override)

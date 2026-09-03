@@ -11,3 +11,4 @@ passlib[bcrypt]
 bcrypt<4.1
 pyjwt
 email-validator
+resend

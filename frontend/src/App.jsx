@@ -10,12 +10,16 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [activeMatchId, setActiveMatchId] = useState(null);
 
-  // On load: warm the backend, restore session, handle ?invite= deep links
+  // On load: warm the backend, restore session, handle ?invite= / ?match= deep links
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
+    const match = params.get('match');
     if (invite) {
       sessionStorage.setItem('cr2_invite', invite);
+      window.history.replaceState({}, '', '/');
+    } else if (match) {
+      sessionStorage.setItem('cr2_match', match);
       window.history.replaceState({}, '', '/');
     }
     // Wake the backend (Render free tier cold start)
@@ -35,15 +39,20 @@ export default function App() {
     restore();
   }, []);
 
-  // After login: if we arrived via an invite, join that match automatically
+  // After login: auto-join an invite or open a linked match
   useEffect(() => {
     if (!user) return;
-    const token = sessionStorage.getItem('cr2_invite');
-    if (!token) return;
+    const inviteToken = sessionStorage.getItem('cr2_invite');
+    const matchId = sessionStorage.getItem('cr2_match');
     sessionStorage.removeItem('cr2_invite');
-    api(`/matches/join/${encodeURIComponent(token)}`, { method: 'POST' })
-      .then((res) => setActiveMatchId(res.match_id))
-      .catch(() => {});
+    sessionStorage.removeItem('cr2_match');
+    if (inviteToken) {
+      api(`/matches/join/${encodeURIComponent(inviteToken)}`, { method: 'POST' })
+        .then((res) => setActiveMatchId(res.match_id))
+        .catch(() => {});
+    } else if (matchId) {
+      setActiveMatchId(matchId);
+    }
   }, [user]);
 
   const handleLogout = () => {

@@ -7,6 +7,7 @@ Timer rules (server-authoritative):
 - Expiry is enforced lazily: on any state fetch or action, an expired started
   turn is marked as a timeout and the turn advances.
 """
+import os
 import secrets
 from datetime import datetime
 
@@ -19,11 +20,41 @@ from db import get_db
 from models import User, Match, MatchPlayer, Turn, MatchState
 from auth import get_current_user
 from services.game_board import get_ranked_board, get_cached_actor_details, find_title_match, board_date_key
+from services.emailer import email_turn_assigned, email_invite
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 TURN_SECONDS = 120          # 2 minutes, from the player starting their turn
 TIMEOUTS_BEFORE_AUTO_RESIGN = 3
+
+# Base URL for email deep links (the frontend site)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").rstrip("/")
+
+
+def _match_url(match_id: str) -> str | None:
+    return f"{FRONTEND_URL}/?match={match_id}" if FRONTEND_URL else None
+
+
+async def _notify_turn_assigned(db: AsyncSession, match: Match, players: list[MatchPlayer],
+                                namer_name: str | None = None, namer_movie: str | None = None):
+    """Email the player whose turn was just assigned (if the turn exists)."""
+    state = await _load_state(db, match)
+    if not state.current_turn_id:
+        return
+    turn = (await db.execute(select(Turn).where(Turn.id == state.current_turn_id))).scalar_one_or_none()
+    if not turn:
+        return
+    player = next((p for p in players if p.user_id == turn.user_id), None)
+    if not player:
+        return
+    target = await db.get(User, turn.user_id)
+    if not target:
+        return
+    actor_name = (await get_cached_actor_details(match.actor_id))["name"]
+    email_turn_assigned(
+        target.email, target.display_name, actor_name,
+        namer_name, namer_movie, _match_url(match.id),
+    )
 
 
 class CreateMatchIn(BaseModel):
@@ -202,6 +233,17 @@ async def create_match(data: CreateMatchIn, user: User = Depends(get_current_use
     state.current_turn_id = turn.id
     await db.commit()
 
+    # Email the rest of the crew: creator started a match (also serves as the
+    # "new game started" heads-up for existing crew members).
+    actor_name = (await get_cached_actor_details(actor_id))["name"]
+    players = await _load_players(db, match.id)
+    for p in players:
+        if p.user_id == user.id:
+            continue
+        u = await db.get(User, p.user_id)
+        if u:
+            email_invite(u.email, user.display_name, _match_url(match.id) or f"{FRONTEND_URL}")
+
     return {"match_id": match.id, "invite_token": match.invite_token,
             "actor_id": actor_id, "player_count": len(member_ids)}
 
@@ -358,6 +400,7 @@ async def submit_guess(match_id: str, data: GuessIn, user: User = Depends(get_cu
         await _finish_turn_and_advance(db, match, state, players, turn, outcome="timeout",
                                        guess_text=data.guess)
         await db.commit()
+        await _notify_turn_assigned(db, match, players)
         raise HTTPException(status_code=408, detail="Time's up! Your turn expired.")
 
     # Validate the guess against the daily board, excluding claimed ranks
@@ -394,6 +437,8 @@ async def submit_guess(match_id: str, data: GuessIn, user: User = Depends(get_cu
                                    outcome="named", guess_text=data.guess,
                                    matched_rank=movie_entry["rank"])
     await db.commit()
+    await _notify_turn_assigned(db, match, players,
+                                namer_name=user.display_name, namer_movie=movie_entry["title"])
 
     return {"correct": True, "rank": movie_entry["rank"], "title": movie_entry["title"]}
 
