@@ -15,6 +15,9 @@ def _database_url() -> str:
     url = os.getenv("DATABASE_URL", "").strip()
     if not url:
         # Local dev default: SQLite file (prod always sets DATABASE_URL to Neon)
+        if os.getenv("IS_DEPLOYED"):  # never silently fall back in prod
+            raise RuntimeError("DATABASE_URL is not set — refusing to start with in-container SQLite")
+        print("[db] WARNING: DATABASE_URL not set — using local SQLite fallback")
         return "sqlite+aiosqlite:///./cr_v2.db"
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)

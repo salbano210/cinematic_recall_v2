@@ -38,7 +38,10 @@ export async function api(path, { method = 'GET', body } = {}) {
     data = null;
   }
 
-  if (res.status === 401) {
+  // 401 on login/register is a normal auth failure — show the server's real
+  // message; 401 elsewhere means a stale token → clear it and force login.
+  const isAuthRoute = path.startsWith('/auth/login') || path.startsWith('/auth/register');
+  if (res.status === 401 && !isAuthRoute) {
     clearToken();
     throw new ApiError(401, 'Please log in');
   }
